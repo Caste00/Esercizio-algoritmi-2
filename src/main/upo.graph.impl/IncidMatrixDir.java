@@ -186,16 +186,9 @@ public class IncidMatrixDir implements Graph {
         return true;
     }
 
-    private void initGraph(VisitResult visit) {
-        for (Integer vertex : getVertices()) {
-            visit.setColor(vertex, VisitResult.Color.WHITE);
-        }
-    }
-
     @Override
     public boolean isCyclic() {
         VisitResult result = new VisitResult(this);
-        initGraph(result);
         for (Integer vertex : getVertices()) {
             if (result.getColor(vertex) == VisitResult.Color.WHITE) {
                 if (visitDFSIsCyclic(vertex, result)) {
@@ -232,7 +225,6 @@ public class IncidMatrixDir implements Graph {
         if (integer >= numberOfVertices || integer < 0) throw new IllegalArgumentException();
         VisitResult result = new VisitResult(this);
         ArrayList<Integer> visit = new ArrayList<>();
-        initGraph(result);
         visitBFS(integer, result, visit);
         return result;
     }
@@ -259,7 +251,6 @@ public class IncidMatrixDir implements Graph {
         if (integer >= numberOfVertices || integer < 0) throw new IllegalArgumentException();
         VisitResult result = new VisitResult(this);
         int[] time = {0};
-        initGraph(result);
         visitDFS(integer, result, time);
         return result;
     }
@@ -284,7 +275,6 @@ public class IncidMatrixDir implements Graph {
         if (integer >= numberOfVertices || integer < 0) throw new IllegalArgumentException();
         VisitResult result = new VisitResult(this);
         int[] time = {0};
-        initGraph(result);
         visitDFS(integer, result, time);
         Integer next;
         while ((next = vertexColorControl(result)) != -1) {
@@ -307,7 +297,6 @@ public class IncidMatrixDir implements Graph {
         VisitResult result = new VisitResult(this);
         int[] time = {0};
         ArrayList<Integer> starts = new ArrayList<>(Arrays.asList(integers));
-        initGraph(result);
         while (!starts.isEmpty()) {
             if (starts.getFirst() >= numberOfVertices || starts.getFirst() < 0) throw new IllegalArgumentException();
             if (result.getColor(starts.getFirst()) == VisitResult.Color.WHITE) {
@@ -379,7 +368,6 @@ public class IncidMatrixDir implements Graph {
         Set<Set<Integer>> cfc = new HashSet<>();
         ArrayList<Integer> resultDFS = new ArrayList<>();
         VisitResult result = new VisitResult(this);
-        initGraph(result);
         for (int i = 0; i < numberOfVertices; i++) {
             if (result.getColor(i) == VisitResult.Color.WHITE) {
                 normalDFS(i, result, resultDFS);
@@ -388,7 +376,6 @@ public class IncidMatrixDir implements Graph {
 
         IncidMatrixDir transposeGraph = getTranspose();
         VisitResult transposeResult = new VisitResult(transposeGraph);
-        initGraph(transposeResult);
         Collections.reverse(resultDFS);
         for (Integer vertex : resultDFS) {
             if (transposeResult.getColor(vertex) == VisitResult.Color.WHITE) {
@@ -447,6 +434,6 @@ public class IncidMatrixDir implements Graph {
 
     @Override
     public Set<Set<Integer>> connectedComponents() throws UnsupportedOperationException {
-        return Set.of();
+        throw new UnsupportedOperationException();
     }
 }

@@ -17,7 +17,7 @@ public class Node {
         direction = dir;
     }
 
-    public void pudWeight(Double v) {
+    public void putWeight(Double v) {
         weight = v;
     }
 

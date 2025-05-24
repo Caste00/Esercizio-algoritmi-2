@@ -2,10 +2,7 @@ import upo.graph.base.Edge;
 import upo.graph.base.VisitResult;
 import upo.graph.base.WeightedGraph;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.NoSuchElementException;
-import java.util.Set;
+import java.util.*;
 
 public class IncidMatrixDirWeight implements WeightedGraph {
     private int numberOfVertices;
@@ -201,11 +198,35 @@ public class IncidMatrixDirWeight implements WeightedGraph {
 
     @Override
     public Set<Integer> getAdjacent(Integer integer) throws NoSuchElementException {
-        return Set.of();
+        if (integer >= numberOfVertices || integer < 0) throw new NoSuchElementException();
+
+        Set<Integer> adjacent = new HashSet<>();
+
+        for (int i = 0; i < numberOfEdge; i++) {
+            if (matrix.get(integer).get(i).getDirection() == Incidence.SOURCE) {
+                for (int j = 0; j < numberOfVertices; j++) {
+                    if (matrix.get(j).get(i).getDirection() == Incidence.TARGET) {
+                        adjacent.add(j);
+                        break;
+                    }
+                }
+            }
+        }
+
+        return adjacent;
     }
 
     @Override
     public boolean isAdjacent(Integer integer, Integer integer1) throws IllegalArgumentException {
+        if (integer >= numberOfVertices || integer1 >= numberOfVertices || integer < 0 || integer1 < 0)
+            throw new IllegalArgumentException();
+
+        for (int i = 0; i < numberOfEdge; i++) {
+            if (matrix.get(integer).get(i).getDirection() == Incidence.SOURCE && matrix.get(integer1).get(i).getDirection() == Incidence.TARGET) {
+                return true;
+            }
+        }
+
         return false;
     }
 
@@ -216,52 +237,265 @@ public class IncidMatrixDirWeight implements WeightedGraph {
 
     @Override
     public boolean isDirected() {
-        return false;
+        return true;
     }
 
     @Override
     public boolean isCyclic() {
+        VisitResult result = new VisitResult(this);
+        for (Integer vertex : getVertices()) {
+            if (result.getColor(vertex) == VisitResult.Color.WHITE) {
+                if (visitDFSIsCyclic(vertex, result)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean visitDFSIsCyclic(Integer integer, VisitResult result) {
+        result.setColor(integer, VisitResult.Color.GRAY);
+        for (Integer adjacent : getAdjacent(integer)) {
+            VisitResult.Color color = result.getColor(adjacent);
+            if (color == VisitResult.Color.WHITE) {
+                if (visitDFSIsCyclic(adjacent, result)) {
+                    return true;
+                }
+            } else if (color == VisitResult.Color.GRAY) {
+                return true;
+            }
+        }
+        result.setColor(integer, VisitResult.Color.BLACK);
         return false;
     }
 
     @Override
     public boolean isDAG() {
-        return false;
+        return isDirected() && !isCyclic();
     }
 
     @Override
     public VisitResult getBFSTree(Integer integer) throws UnsupportedOperationException, IllegalArgumentException {
-        return null;
+        if (integer >= numberOfVertices || integer < 0) throw new IllegalArgumentException();
+        VisitResult result = new VisitResult(this);
+        ArrayList<Integer> visit = new ArrayList<>();
+        visitBFS(integer, result, visit);
+        return result;
+    }
+
+    private void visitBFS(Integer integer, VisitResult result, ArrayList<Integer> visita) {
+        result.setColor(integer, VisitResult.Color.GRAY);
+        visita.add(integer);
+
+        while (!visita.isEmpty()) {
+            for (Integer adjacent : getAdjacent(visita.getFirst())) {
+                if (result.getColor(adjacent) == VisitResult.Color.WHITE) {
+                    result.setColor(adjacent, VisitResult.Color.GRAY);
+                    result.setParent(adjacent, visita.getFirst());
+                    visita.add(adjacent);
+                }
+            }
+            result.setColor(visita.getFirst(), VisitResult.Color.BLACK);
+            visita.removeFirst();
+        }
     }
 
     @Override
     public VisitResult getDFSTree(Integer integer) throws UnsupportedOperationException, IllegalArgumentException {
-        return null;
+        if (integer >= numberOfVertices || integer < 0) throw new IllegalArgumentException();
+        VisitResult result = new VisitResult(this);
+        int[] time = {0};
+        visitDFS(integer, result, time);
+        return result;
+    }
+
+    private void visitDFS(Integer integer, VisitResult result, int[] time) {
+        result.setColor(integer, VisitResult.Color.GRAY);
+        result.setStartTime(integer, ++time[0]);
+
+        for (Integer adjacent : getAdjacent(integer)) {
+            if (result.getColor(adjacent) == VisitResult.Color.WHITE) {
+                result.setParent(adjacent, integer);
+                visitDFS(adjacent, result, time);
+            }
+        }
+
+        result.setColor(integer, VisitResult.Color.BLACK);
+        result.setEndTime(integer, ++time[0]);
     }
 
     @Override
     public VisitResult getDFSTOTForest(Integer integer) throws UnsupportedOperationException, IllegalArgumentException {
-        return null;
+        if (integer >= numberOfVertices || integer < 0) throw new IllegalArgumentException();
+        VisitResult result = new VisitResult(this);
+        int[] time = {0};
+        visitDFS(integer, result, time);
+        Integer next;
+        while ((next = vertexColorControl(result)) != -1) {
+            visitDFS(next, result, time);
+        }
+        return result;
+    }
+
+    private Integer vertexColorControl(VisitResult result) {
+        for (int i = 0; i < numberOfVertices; i++) {
+            if (result.getColor(i) != VisitResult.Color.BLACK) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     @Override
     public VisitResult getDFSTOTForest(Integer[] integers) throws UnsupportedOperationException, IllegalArgumentException {
-        return null;
+        VisitResult result = new VisitResult(this);
+        int[] time = {0};
+        ArrayList<Integer> starts = new ArrayList<>(Arrays.asList(integers));
+        while (!starts.isEmpty()) {
+            if (starts.getFirst() >= numberOfVertices || starts.getFirst() < 0) throw new IllegalArgumentException();
+            if (result.getColor(starts.getFirst()) == VisitResult.Color.WHITE) {
+                visitDFS(starts.getFirst(), result, time);
+            }
+            starts.removeFirst();
+        }
+        Integer next;
+        while ((next = vertexColorControl(result)) != -1) {
+            visitDFS(next, result, time);
+        }
+        return result;
     }
 
     @Override
     public Integer[] topologicalSort() throws UnsupportedOperationException {
-        return new Integer[0];
+        if (this.isCyclic()) throw new UnsupportedOperationException();
+
+        ArrayList<ArrayList<Node>> copy = new ArrayList<>();
+        Integer[] result = new Integer[numberOfVertices];
+        Set<Integer> visited = new HashSet<>();
+
+        for (ArrayList<Node> row : matrix) {
+            ArrayList<Node> newRow = new ArrayList<>();
+            for (Node node : row) {
+                Node newNode = new Node();
+                newNode.makeNode(node.getDirection(), node.getWeight());
+                newRow.add(newNode);
+            }
+            copy.add(newRow);
+        }
+
+        for (int i = 0; i < numberOfVertices; i++) {
+            int choice = getVertexWithoutIncomingEdge(copy, visited);
+            if (choice == -1) throw new UnsupportedOperationException();
+            visited.add(choice);
+            result[i] = choice;
+            removeOutcomingEdge(choice, copy);
+        }
+
+        return result;
+    }
+
+    private int getVertexWithoutIncomingEdge(ArrayList<ArrayList<Node>> copy, Set<Integer> visited) {
+        for (int i = 0; i < copy.size(); i++) {
+            if (visited.contains(i)) continue;
+
+            boolean hasIncoming = false;
+            for (int j = 0; j < numberOfEdge; j++) {
+                if (copy.get(i).get(j).getDirection() == Incidence.TARGET) {
+                    hasIncoming = true;
+                    break;
+                }
+            }
+
+            if (!hasIncoming) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private void removeOutcomingEdge(Integer integer, ArrayList<ArrayList<Node>> copy) {
+        for (int i = 0; i < numberOfEdge; i++) {
+            if (copy.get(integer).get(i).getDirection() == Incidence.SOURCE) {
+                for (int j = 0; j < numberOfVertices; j++) {
+                    copy.get(j).get(i).putDirection(Incidence.NONE);
+                    copy.get(j).get(i).putWeight(Node.INFINITY);
+                }
+            }
+        }
     }
 
     @Override
     public Set<Set<Integer>> stronglyConnectedComponents() throws UnsupportedOperationException {
-        return Set.of();
+        Set<Set<Integer>> cfc = new HashSet<>();
+        ArrayList<Integer> resultDFS = new ArrayList<>();
+        VisitResult result = new VisitResult(this);
+        for (int i = 0; i < numberOfVertices; i++) {
+            if (result.getColor(i) == VisitResult.Color.WHITE) {
+                normalDFS(i, result, resultDFS);
+            }
+        }
+
+        IncidMatrixDirWeight transposeGraph = getTranspose();
+        VisitResult transposeResult = new VisitResult(transposeGraph);
+        Collections.reverse(resultDFS);
+        for (Integer vertex : resultDFS) {
+            if (transposeResult.getColor(vertex) == VisitResult.Color.WHITE) {
+                Set<Integer> component = new HashSet<>();
+                transposeGraph.dfsComponent(vertex, transposeResult, component);
+                cfc.add(component);
+            }
+        }
+
+        return cfc;
+    }
+
+    private void normalDFS(Integer integer, VisitResult result, ArrayList<Integer> resultDFS) {
+        result.setColor(integer, VisitResult.Color.GRAY);
+        for (Integer adjacent : getAdjacent(integer)) {
+            if (result.getColor(adjacent) == VisitResult.Color.WHITE) {
+                normalDFS(adjacent, result, resultDFS);
+            }
+        }
+        result.setColor(integer, VisitResult.Color.BLACK);
+        resultDFS.add(integer);
+    }
+
+    private IncidMatrixDirWeight getTranspose() {
+        IncidMatrixDirWeight transpose = new IncidMatrixDirWeight();
+        for (int i = 0; i < numberOfVertices; i++) {
+            transpose.addVertex();
+        }
+        for (int i = 0; i < numberOfEdge; i++) {
+            Integer source = null;
+            Integer destination = null;
+            for (int j = 0; j < numberOfVertices; j++) {
+                if (matrix.get(j).get(i).getDirection() == Incidence.SOURCE) {
+                    source = j;
+                } else if (matrix.get(j).get(i).getDirection() == Incidence.TARGET) {
+                    destination = j;
+                }
+            }
+            if (source != null && destination != null) {
+                transpose.addEdge(Edge.getEdgeByVertexes(destination, source));
+            }
+        }
+        return transpose;
+    }
+
+    private void dfsComponent(Integer integer, VisitResult result, Set<Integer> component) {
+        result.setColor(integer, VisitResult.Color.GRAY);
+        component.add(integer);
+        for (Integer adjacent : getAdjacent(integer)) {
+            if (result.getColor(adjacent) == VisitResult.Color.WHITE) {
+                dfsComponent(adjacent, result, component);
+            }
+        }
+        result.setColor(integer, VisitResult.Color.BLACK);
     }
 
     @Override
     public Set<Set<Integer>> connectedComponents() throws UnsupportedOperationException {
-        return Set.of();
+        throw new UnsupportedOperationException();
     }
 
     // Non implementare
